@@ -75,15 +75,60 @@ async function startRecording(streamId) {
   // recording is in progress. We could write it to storage but that slightly
   // increases the risk of things getting out of sync.
   window.location.hash = 'recording';
+  // capture screenshot from video track
+  const tracks = recorder.stream.getTracks();
+  console.log(tracks);
+  const videoTrack = tracks.find((t) => t.kind === 'video');
+  console.log(videoTrack);
+  const trackProcessor = new MediaStreamTrackProcessor({ track: videoTrack });
+  const trackGenerator = new MediaStreamTrackGenerator({ kind: 'video' });
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  const video = document.createElement('video');
+  canvas.appendChild(video);
+  document.body.appendChild(canvas);
+
+  async function detectBarcodes(videoFrame) {
+    console.log('detecting barcodes');
+  }
+  function highlightBarcodes(videoFrame, barcodes) {
+    console.log('highlighting barcodes');
+    return new VideoFrame(videoFrame);
+  }
+
+  const transformer = new TransformStream({
+    async transform(videoFrame, controller) {
+      console.log(videoFrame, controller);
+      const barcodes = await detectBarcodes(videoFrame);
+      const newFrame = highlightBarcodes(videoFrame, barcodes);
+      videoFrame.close();
+      controller.enqueue(newFrame);
+    }
+  });
+
+  console.log(trackProcessor, trackGenerator, transformer);
+  trackProcessor.readable
+    .pipeThrough(transformer)
+    .pipeTo(trackGenerator.writable);
+
+  // draw stream on canvas
+  video.srcObject = new MediaStream([trackGenerator]);
+  video.onloadedmetadata = () => {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    video.play();
+  };
 }
 
 async function stopRecording() {
-  recorder.stop();
+  // recorder.stop();
 
+  console.log(recorder, recorder.stream);
+  const tracks = recorder.stream.getTracks();
   // Stopping the tracks makes sure the recording icon in the tab is removed.
-  recorder.stream.getTracks().forEach((t) => t.stop());
+  tracks.forEach((t) => t.stop());
 
-  // Update current state in URL
+  // Update current state
   window.location.hash = '';
 
   // Note: In a real extension, you would want to write the recording to a more

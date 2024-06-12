@@ -52,6 +52,6 @@ chrome.action.onClicked.addListener(async (tab) => {
     target: 'offscreen',
     data: streamId
   });
-
   chrome.action.setIcon({ path: '/icons/recording.png' });
+  chrome.action.setPopup({ popup: 'popup.html' });
 });
